@@ -8,6 +8,7 @@ uvicorn[standard]
 python-dotenv
 pymupdf
 python-docx
+docx2txt
 sse-starlette
 sqlalchemy>=2.0
 aiomysql

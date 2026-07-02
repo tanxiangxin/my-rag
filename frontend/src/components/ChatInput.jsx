@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function ChatInput({ onSend, loading, mode, onModeChange }) {
+export default function ChatInput({ onSend, loading }) {
   const [input, setInput] = useState('')
 
   const handleSubmit = (e) => {
@@ -36,19 +36,6 @@ export default function ChatInput({ onSend, loading, mode, onModeChange }) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => onModeChange(mode === 'create' ? 'stream' : 'create')}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors cursor-pointer ${
-              mode === 'stream'
-                ? 'bg-green-50 border-green-300 text-green-700'
-                : 'bg-blue-50 border-blue-300 text-blue-700'
-            }`}
-            title={mode === 'create' ? '切换为流式回复' : '切换为一次性回复'}
-          >
-            {mode === 'create' ? '一次性' : '流式'}
-          </button>
-
           <button
             type="submit"
             disabled={loading || !input.trim()}

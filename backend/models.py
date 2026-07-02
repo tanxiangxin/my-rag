@@ -30,7 +30,7 @@ class Document(base):
     file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     chunk_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
-
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
     knowledge_base: Mapped["KnowledgeBase"] = relationship("KnowledgeBase", back_populates="documents")
 
 

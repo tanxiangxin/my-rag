@@ -25,7 +25,7 @@ export default function MessageBubble({ message, onRegenerate }) {
         {isUser ? (
           message.content
         ) : message.content ? (
-          <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-headings:text-gray-800 prose-strong:text-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:bg-gray-200 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-0 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-a:text-blue-600">
+          <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-headings:text-gray-800 prose-strong:text-gray-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:bg-[#e5e7eb] prose-code:text-[#dc2626] prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:font-normal prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-0 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-a:text-blue-600">
             <Markdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -35,7 +35,7 @@ export default function MessageBubble({ message, onRegenerate }) {
                     return <CodeBlock language={match[1]}>{children}</CodeBlock>
                   }
                   return (
-                    <code className="px-1 py-0.5 bg-gray-200 rounded text-sm font-mono" {...props}>
+                    <code className="px-1.5 py-0.5 bg-[#e5e7eb] text-[#dc2626] rounded text-sm font-mono font-normal before:content-none after:content-none" {...props}>
                       {children}
                     </code>
                   )

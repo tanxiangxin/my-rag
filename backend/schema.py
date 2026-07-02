@@ -1,4 +1,4 @@
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field,ConfigDict
 from typing import Annotated
 from datetime import datetime
 
@@ -11,3 +11,23 @@ class ChatRequest(BaseModel):
 class MessageRequest(BaseModel):
     role: str
     requestion: str
+
+class DocumentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    filename: str
+    file_type: str
+    file_size: int
+    chunk_count: int
+    created_at: datetime
+
+class KnowledgeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    description: str
+    doc_count: int
+    chunk_count: int
+    created_at: datetime

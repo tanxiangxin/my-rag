@@ -14,7 +14,9 @@ class Settings:
     BASE_URL: str = os.getenv("BASE_URL","")
     MODEL_ID: str = os.getenv("MODEL_ID", "deepseek-v4-flash")
 
+    UPLOAD_URL: str = os.getenv("UPLOAD","./data/uploads")
+
     CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma")
     COLLECTION_NAME: str = os.getenv("COLLECTION_NAME", "documents")
-
+    EMBEDDING_MODQL: str = os.getenv("EMBEDDING_MODEL","BAAI/bge-small-zh-v1.5")
 settings = Settings()

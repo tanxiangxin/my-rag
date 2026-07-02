@@ -2,24 +2,42 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import Sidebar from './components/Sidebar'
 import MessageBubble from './components/MessageBubble'
 import ChatInput from './components/ChatInput'
+import KnowledgeBaseModal from './components/KnowledgeBaseModal'
+import FileUploadModal from './components/FileUploadModal'
+import DocumentPanel from './components/DocumentPanel'
 
 const API_BASE = 'http://localhost:8000'
 
-const MOCK_KBS = [
-  { id: '1', name: '技术文档', docCount: 5 },
-  { id: '2', name: '产品手册', docCount: 3 },
-]
-
 export default function App() {
+  const [kbs, setKbs] = useState([])
+  const [selectedKb, setSelectedKb] = useState(null)
+  const [managingKb, setManagingKb] = useState(null)
+  const [showKbModal, setShowKbModal] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState('create')
-  const [selectedKb, setSelectedKb] = useState('1')
   const [selectedSession, setSelectedSession] = useState(null)
   const [sessions, setSessions] = useState([])
   const lastQuestionRef = useRef('')
   const eventSourceRef = useRef(null)
   const bottomRef = useRef(null)
+
+  const fetchKbs = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/knowledge`)
+      if (res.ok) {
+        const data = await res.json()
+        setKbs(data)
+        if (data.length > 0 && !selectedKb) {
+          setSelectedKb(data[0].id)
+        }
+      }
+    } catch {}
+  }, [selectedKb])
+
+  useEffect(() => {
+    fetchKbs()
+  }, [])
 
   useEffect(() => {
     fetchSessions()
@@ -37,9 +55,7 @@ export default function App() {
       if (data.length > 0 && !selectedSession) {
         setSelectedSession(data[0].id)
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   const fetchMessages = useCallback(async (sessionId) => {
@@ -81,49 +97,39 @@ export default function App() {
     setMessages(prev => [...prev, { role: 'user', content: question }])
     setLoading(true)
 
-    if (mode === 'create') {
+    const kbParam = selectedKb ? `&kb_id=${selectedKb}` : ''
+
+    setMessages(prev => [...prev, { role: 'assistant', content: '' }])
+
+    const es = new EventSource(`${API_BASE}/chat/stream?question=${encodeURIComponent(question)}&session_id=${sessionId}${kbParam}`)
+    eventSourceRef.current = es
+
+    es.addEventListener('token', (e) => {
       try {
-        const res = await fetch(`${API_BASE}/chat/create?question=${encodeURIComponent(question)}&session_id=${sessionId}`)
-        const text = await res.text()
-        setMessages(prev => [...prev, { role: 'assistant', content: text }])
-      } catch {
-        setMessages(prev => [...prev, { role: 'assistant', content: '请求失败，请检查网络连接或稍后重试。' }])
-      } finally {
-        setLoading(false)
-      }
-    } else {
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }])
+        const data = JSON.parse(e.data)
+        if (data.type === 'token') {
+          setMessages(prev => {
+            const next = [...prev]
+            const last = { ...next[next.length - 1], content: next[next.length - 1].content + data.content }
+            next[next.length - 1] = last
+            return next
+          })
+        }
+      } catch { /* ignore */ }
+    })
 
-      const es = new EventSource(`${API_BASE}/chat/stream?question=${encodeURIComponent(question)}&session_id=${sessionId}`)
-      eventSourceRef.current = es
+    es.addEventListener('done', () => {
+      es.close()
+      eventSourceRef.current = null
+      setLoading(false)
+    })
 
-      es.addEventListener('token', (e) => {
-        try {
-          const data = JSON.parse(e.data)
-          if (data.type === 'token') {
-            setMessages(prev => {
-              const next = [...prev]
-              const last = { ...next[next.length - 1], content: next[next.length - 1].content + data.content }
-              next[next.length - 1] = last
-              return next
-            })
-          }
-        } catch { /* ignore */ }
-      })
-
-      es.addEventListener('done', () => {
-        es.close()
-        eventSourceRef.current = null
-        setLoading(false)
-      })
-
-      es.onerror = () => {
-        es.close()
-        eventSourceRef.current = null
-        setLoading(false)
-      }
+    es.onerror = () => {
+      es.close()
+      eventSourceRef.current = null
+      setLoading(false)
     }
-  }, [loading, mode, selectedSession])
+  }, [loading, selectedSession, selectedKb])
 
   const handleRegenerate = useCallback(() => {
     if (!lastQuestionRef.current || loading) return
@@ -151,9 +157,7 @@ export default function App() {
       setSessions(prev => [data, ...prev])
       setSelectedSession(data.id)
       setMessages([])
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   const handleSelectSession = (id) => {
@@ -165,27 +169,102 @@ export default function App() {
     setLoading(false)
   }
 
+  const handleCreateKb = async ({ name, description }) => {
+    const params = new URLSearchParams({ name, description })
+    const res = await fetch(`${API_BASE}/knowledge?${params}`, { method: 'POST' })
+    if (!res.ok) throw new Error('创建失败')
+    await fetchKbs()
+  }
+
+  const handleDeleteKb = async (kbId, kbName) => {
+    if (!confirm(`确定删除知识库 "${kbName}"？\n该操作将删除所有文档和向量数据，不可恢复。`)) return
+    try {
+      await fetch(`${API_BASE}/knowledge/${kbId}`, { method: 'DELETE' })
+      if (selectedKb === kbId) setSelectedKb(null)
+      if (managingKb === kbId) setManagingKb(null)
+      await fetchKbs()
+    } catch {}
+  }
+
+  const handleSelectKb = (kbId) => {
+    setSelectedKb(kbId)
+    setManagingKb(null)
+  }
+
+  const handleManageKb = (kbId) => {
+    setManagingKb(kbId)
+  }
+
+  const getKbName = (kbId) => kbs.find(kb => kb.id === kbId)?.name || ''
+
+  // Show document panel when managing a KB
+  if (managingKb) {
+    return (
+      <div className="flex h-dvh bg-gray-100">
+        <Sidebar
+          knowledgeBases={kbs}
+          selectedKb={selectedKb}
+          onSelectKb={handleSelectKb}
+          onManageKb={handleManageKb}
+          onDeleteKb={handleDeleteKb}
+          sessions={sessions}
+          selectedSession={selectedSession}
+          onSelectSession={handleSelectSession}
+          onNewSession={handleNewSession}
+          onNewKb={() => setShowKbModal(true)}
+        />
+        <DocumentPanel
+          kbId={managingKb}
+          kbName={getKbName(managingKb)}
+          onBack={() => setManagingKb(null)}
+        />
+        {showKbModal && (
+          <KnowledgeBaseModal
+            onClose={() => setShowKbModal(false)}
+            onSubmit={handleCreateKb}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-dvh bg-gray-100">
       <Sidebar
-        knowledgeBases={MOCK_KBS}
+        knowledgeBases={kbs}
         selectedKb={selectedKb}
-        onSelectKb={setSelectedKb}
+        onSelectKb={handleSelectKb}
+        onManageKb={handleManageKb}
+        onDeleteKb={handleDeleteKb}
         sessions={sessions}
         selectedSession={selectedSession}
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
+        onNewKb={() => setShowKbModal(true)}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
         <header className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white shrink-0">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold text-gray-800">RAG 知识库问答系统</h1>
+            {selectedKb && (
+              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                {getKbName(selectedKb)}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            <span className={`text-xs px-2 py-1 rounded-full ${mode === 'stream' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-              {mode === 'create' ? '一次性回复' : '流式回复'}
-            </span>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="text-sm text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
+              title="上传文件到知识库"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </button>
             <button
               onClick={clearChat}
               className="text-sm text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
@@ -210,23 +289,28 @@ export default function App() {
               onRegenerate={msg.role === 'assistant' ? handleRegenerate : undefined}
             />
           ))}
-          {loading && mode === 'create' && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 text-gray-500 rounded-2xl rounded-bl-md px-4 py-2.5 text-sm animate-pulse">
-                思考中...
-              </div>
-            </div>
-          )}
           <div ref={bottomRef} />
         </div>
 
         <ChatInput
           onSend={sendMessage}
           loading={loading}
-          mode={mode}
-          onModeChange={setMode}
         />
       </div>
+
+      {showKbModal && (
+        <KnowledgeBaseModal
+          onClose={() => setShowKbModal(false)}
+          onSubmit={handleCreateKb}
+        />
+      )}
+      {showUploadModal && (
+        <FileUploadModal
+          knowledgeBases={kbs}
+          onClose={() => setShowUploadModal(false)}
+          onSuccess={fetchKbs}
+        />
+      )}
     </div>
   )
 }
