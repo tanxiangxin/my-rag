@@ -28,6 +28,8 @@ class KnowledgeResponse(BaseModel):
     id: str
     name: str
     description: str
+    chunk_size: int
+    chunk_overlap: int
     doc_count: int
     chunk_count: int
     created_at: datetime

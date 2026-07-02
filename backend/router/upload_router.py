@@ -26,7 +26,7 @@ async def upload(kb_id: str,file:UploadFile,db: Annotated[AsyncSession,Depends(g
     content = await file.read()
     with open(file_path,"wb") as f:
         f.write(content)
-    chunks = load_and_chunk(file_path)
+    chunks = load_and_chunk(file_path,chunk_size=kb.chunk_size,overlap=kb.chunk_overlap)
     if not chunks:
         os.remove(file_path)
         raise HTTPException(status_code=400,detail="文件解析失败或者内容为空")

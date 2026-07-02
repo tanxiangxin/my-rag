@@ -12,3 +12,4 @@ docx2txt
 sse-starlette
 sqlalchemy>=2.0
 aiomysql
+sentence-transformers

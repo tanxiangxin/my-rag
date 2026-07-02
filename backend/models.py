@@ -11,6 +11,8 @@ class KnowledgeBase(base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: uuid.uuid4().hex)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=True, default="")
+    chunk_size: Mapped[int] = mapped_column(Integer, nullable=False, default=1000)
+    chunk_overlap: Mapped[int] = mapped_column(Integer, nullable=False, default=200)
     doc_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     chunk_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
@@ -42,7 +44,7 @@ class Session(base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
-
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     knowledge_base: Mapped["KnowledgeBase"] = relationship("KnowledgeBase", back_populates="sessions")
     messages: Mapped[list["Messages"]] = relationship("Messages", back_populates="session", cascade="all, delete-orphan")
 

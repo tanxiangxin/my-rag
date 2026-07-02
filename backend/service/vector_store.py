@@ -3,6 +3,7 @@ from chromadb import PersistentClient
 from chromadb.config import Settings as ChromaSetting
 from chromadb.api.types import EmbeddingFunction,Embeddings
 from backend.llm.client import get_embedding_client
+from backend.service import reranke
 from langchain_core.documents import Document
 
 _client = None
@@ -60,11 +61,11 @@ def similarity_search(kb_id: str,query: str,k: int = 4) -> list[Document]:
     if not kb_id:
         return []
     collection = get_collection(kb_id)
-    results = collection.query(query_texts=[query],n_results=k)
+    results = collection.query(query_texts=[query],n_results=k * 5)
     docs = []
     for i in range(len(results["ids"][0])):
         docs.append(Document(
             page_content=results["documents"][0][i],
             metadata=results["metadatas"][0][i] if results["metadatas"] else {}
         ))
-    return docs
+    return reranke.reranke(query,docs,top_k=k)

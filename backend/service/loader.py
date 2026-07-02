@@ -13,7 +13,7 @@ def parse_docx(path:str):
     loader = Docx2txtLoader(path)
     return loader.load()
 
-def chunk_documents(doc:list[Document],chunk_size:int = 100,overlap:int = 20):
+def chunk_documents(doc:list[Document],chunk_size:int = 1000,overlap:int = 200):
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=overlap,
@@ -29,20 +29,20 @@ def chunk_documents(doc:list[Document],chunk_size:int = 100,overlap:int = 20):
         "", ])
     return splitter.split_documents(doc)
 
-def load_and_chunk(filepath:str):
+def load_and_chunk(filepath:str,chunk_size:int = 1000,overlap:int = 200):
     try:
         suffix = filepath.rsplit(".",1)[-1].lower()
         if suffix == "pdf":
             docs = parse_pdf(filepath)
-            return chunk_documents(docs)
+            return chunk_documents(docs,chunk_size,overlap)
 
         elif suffix == "txt":
             docs = parse_txt(filepath)
-            return chunk_documents(docs)
+            return chunk_documents(docs,chunk_size,overlap)
 
         elif suffix == "docx":
             docs = parse_docx(filepath)
-            return chunk_documents(docs)
+            return chunk_documents(docs,chunk_size,overlap)
 
         else:
             print("暂不支持此类格式文件")

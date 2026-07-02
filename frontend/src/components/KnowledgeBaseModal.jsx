@@ -1,16 +1,37 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+const API_BASE = 'http://localhost:8000'
 
 export default function KnowledgeBaseModal({ onClose, onSubmit }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [chunkSize, setChunkSize] = useState(1000)
+  const [chunkOverlap, setChunkOverlap] = useState(200)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    fetch(`${API_BASE}/knowledge/defaults`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          setChunkSize(data.chunk_size ?? 1000)
+          setChunkOverlap(data.chunk_overlap ?? 200)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!name.trim()) return
     setSubmitting(true)
     try {
-      await onSubmit({ name: name.trim(), description: description.trim() })
+      await onSubmit({
+        name: name.trim(),
+        description: description.trim(),
+        chunk_size: chunkSize,
+        chunk_overlap: chunkOverlap,
+      })
       onClose()
     } catch {
       setSubmitting(false)
@@ -45,6 +66,37 @@ export default function KnowledgeBaseModal({ onClose, onSubmit }) {
               rows={3}
               className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors resize-none"
             />
+          </div>
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">切分参数设置</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  切分大小
+                </label>
+                <input
+                  type="number"
+                  min={100}
+                  max={10000}
+                  value={chunkSize}
+                  onChange={(e) => setChunkSize(Number(e.target.value))}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  重叠大小
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={2000}
+                  value={chunkOverlap}
+                  onChange={(e) => setChunkOverlap(Number(e.target.value))}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
+                />
+              </div>
+            </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button

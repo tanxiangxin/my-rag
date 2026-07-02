@@ -5,6 +5,8 @@ import ChatInput from './components/ChatInput'
 import KnowledgeBaseModal from './components/KnowledgeBaseModal'
 import FileUploadModal from './components/FileUploadModal'
 import DocumentPanel from './components/DocumentPanel'
+import SettingsModal from './components/SettingsModal'
+import GlobalSettingsModal from './components/GlobalSettingsModal'
 
 const API_BASE = 'http://localhost:8000'
 
@@ -12,6 +14,8 @@ export default function App() {
   const [kbs, setKbs] = useState([])
   const [selectedKb, setSelectedKb] = useState(null)
   const [managingKb, setManagingKb] = useState(null)
+  const [settingsKb, setSettingsKb] = useState(null)
+  const [showGlobalSettings, setShowGlobalSettings] = useState(false)
   const [showKbModal, setShowKbModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [messages, setMessages] = useState([])
@@ -169,11 +173,31 @@ export default function App() {
     setLoading(false)
   }
 
-  const handleCreateKb = async ({ name, description }) => {
+  const handleCreateKb = async ({ name, description, chunk_size, chunk_overlap }) => {
     const params = new URLSearchParams({ name, description })
+    if (chunk_size !== undefined) params.set('chunk_size', chunk_size)
+    if (chunk_overlap !== undefined) params.set('chunk_overlap', chunk_overlap)
     const res = await fetch(`${API_BASE}/knowledge?${params}`, { method: 'POST' })
     if (!res.ok) throw new Error('创建失败')
     await fetchKbs()
+  }
+
+  const handleSaveSettings = async (kbId, params) => {
+    const query = new URLSearchParams()
+    if (params.chunk_size !== undefined) query.set('chunk_size', params.chunk_size)
+    if (params.chunk_overlap !== undefined) query.set('chunk_overlap', params.chunk_overlap)
+    const res = await fetch(`${API_BASE}/knowledge/${kbId}?${query}`, { method: 'PATCH' })
+    if (!res.ok) throw new Error('保存失败')
+    await fetchKbs()
+  }
+
+  const handleSaveGlobalSettings = async (data) => {
+    const res = await fetch(`${API_BASE}/config/ai`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) throw new Error('保存失败')
   }
 
   const handleDeleteKb = async (kbId, kbName) => {
@@ -207,6 +231,7 @@ export default function App() {
           onSelectKb={handleSelectKb}
           onManageKb={handleManageKb}
           onDeleteKb={handleDeleteKb}
+          onSettingsKb={setSettingsKb}
           sessions={sessions}
           selectedSession={selectedSession}
           onSelectSession={handleSelectSession}
@@ -224,6 +249,19 @@ export default function App() {
             onSubmit={handleCreateKb}
           />
         )}
+        {settingsKb && (
+          <SettingsModal
+            kb={settingsKb}
+            onClose={() => setSettingsKb(null)}
+            onSave={handleSaveSettings}
+          />
+        )}
+        {showGlobalSettings && (
+          <GlobalSettingsModal
+            onClose={() => setShowGlobalSettings(false)}
+            onSave={handleSaveGlobalSettings}
+          />
+        )}
       </div>
     )
   }
@@ -236,6 +274,7 @@ export default function App() {
         onSelectKb={handleSelectKb}
         onManageKb={handleManageKb}
         onDeleteKb={handleDeleteKb}
+        onSettingsKb={setSettingsKb}
         sessions={sessions}
         selectedSession={selectedSession}
         onSelectSession={handleSelectSession}
@@ -254,6 +293,16 @@ export default function App() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowGlobalSettings(true)}
+              className="text-sm text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              title="全局设置"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
             <button
               onClick={() => setShowUploadModal(true)}
               className="text-sm text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
@@ -309,6 +358,19 @@ export default function App() {
           knowledgeBases={kbs}
           onClose={() => setShowUploadModal(false)}
           onSuccess={fetchKbs}
+        />
+      )}
+      {settingsKb && (
+        <SettingsModal
+          kb={settingsKb}
+          onClose={() => setSettingsKb(null)}
+          onSave={handleSaveSettings}
+        />
+      )}
+      {showGlobalSettings && (
+        <GlobalSettingsModal
+          onClose={() => setShowGlobalSettings(false)}
+          onSave={handleSaveGlobalSettings}
         />
       )}
     </div>
